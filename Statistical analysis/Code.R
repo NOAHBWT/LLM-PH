@@ -1,3 +1,155 @@
+# 1. Converting Structured Data to Text Data
+
+library(jsonlite)
+
+create_system_prompt <- function() {
+  system_prompt <- paste0(
+    "Your Role\n",
+    "You are a well-versed scholar in the study of pain and physical activity. You excel at prescribing personalized physical activity levels for people by integrating Biological, Psychological, and Social factors. \n\n",
+    
+    "Background Knowledge\n",
+    "Vigorous physical activity refers to any activity lasting at least 10 minutes that makes you feel exerted and causes you to breathe much more heavily than usual. Examples include: running, walking uphill, swimming at a fast pace (excluding leisurely swimming, splashing about or floating), climbing stairs, aerobic exercise, aerobic dance, cycling at a fast pace, vigorous ball sports (such as those dominated by individual skill and involving a great deal of movement), examples include singles tennis, basketball and football, skipping, weight training, carrying heavy objects (over 10 kg), and shovelling mud. \n\n",
+    "Moderate physical activity are those that last at least 10 minutes and make you feel slightly out of breath, with your breathing being a little heavier than usual. Examples include: walking downhill, swimming at a moderate pace, going down stairs, dancing (excluding aerobic dance, slow dancing and ballroom dancing), Tai Chi (excluding Wai Dan Gong), cycling at a moderate pace, walking whilst carrying moderately heavy items (such as shopping for groceries, carrying or holding a child); ‘Somewhat heavy’ refers to 4.5 to 9 kg: e.g. 2 reams of A4 paper, 2 family-size cartons of fresh milk (in plastic bottles), 1 mini watermelon, 3 pineapples, 5 kg of rice, 3 bricks, 7 bottles of beer, 24 tins of fizzy drink), tidying the balcony or back garden, strenuous household chores (such as cleaning windows, mopping the floor by hand, making the bed, hand-washing clothes, hand-washing the car), other ball sports, such as doubles tennis, badminton, table tennis, volleyball, baseball. \n\n",
+    "Walking (for more than 10 consecutive minutes) includes walking to and from work, at home and when travelling, but does not include climbing stairs or hiking. \n\n",
+    "Sitting refers to sitting or reclining whilst working, at home, doing homework or during leisure time. Examples include sitting at a desk, eating meals, using a computer whilst seated, visiting friends, reading, and watching television whilst seated or reclining; however, it does not include sleeping. \n\n",
+    
+    
+    "Your Task\n",
+    "It is important to avoid both ‘insufficient physical activity’ and ‘excessive physical activity’ in order to achieve the dual objectives of ‘health promotion’ and ‘pain relief’. Based on the information of a person below, recommend the ideal frequency (days per week) and duration (minutes per day) for three types of activity (Vigorous, Moderate, Walking) and duration (minutes per day) for sitting per day. The format of your answer is JSON. Please do not give any additional output. Please refer to the following format to give your answer:\n",
+    "json\n",
+    "{\n",
+    "\"Inference process1\": string, // Please give your inference process of for recommending ideal level of vigorous physical activity. \n",
+    "\"Vigorous physical activity (days_per_week)\": int\n",
+    "\"Vigorous physical activity (minutes_on_those_day)\": int\n",
+    
+    "\"Inference process2\": string, // Please give your inference process of for recommending ideal level of moderate physical activity.\n",
+    "\"Moderate physical activity (days_per_week)\": int\n",
+    "\"Moderate physical activity (minutes_on_those_day)\": int\n",
+    
+    "\"Inference process3\": string, // Please give your inference process of for recommending ideal level of walking.\n",
+    "\"Walking (days_per_week)\": int\n",
+    "\"Walking (minutes_on_those_day)\": int\n",
+    
+    "\"Inference process4\": string, // Please give your inference process of for recommending ideal level of sitting.\n",
+    "\"Sitting (minutes_per_day)\": int\n",
+    "}"
+  )
+  
+  return(system_prompt)
+}
+
+create_user_prompt <- function(patient_record) {
+  # Extract patient information from the data frame row
+  prompt <- paste0(
+    "Please assess the pain intensity based on the following data:\n\n",
+    "【Basic Information】\n",
+    "- Age:", patient_record, " years\n",
+    "- Gender: ", patient_record, "\n\n",
+    "- Occupation: ", patient_record, "\n\n",
+    "- Education level: ", patient_record, "\n",
+    "【Medical history】\n",
+    "- Insomnia: ", patient_record, "\n",
+    "- Respiratory diseases: ", patient_record, "\n",
+    "- Cardiovascular diseases: ", patient_record, "\n",
+    "- Known psychiatric diseases: ", patient_record, "\n",
+    "- Cancer: ", patient_record, "\n",
+    "【Lifestyle】\n",
+    "- Smoking: ", patient_record, "\n",
+    "- Dringking: ", patient_record, "\n",
+    "【Pain condition】\n",
+    "- Self-reported chronic pain: ", patient_record, "\n",
+    "- Pain duration: ", patient_record, "\n",
+    "【Pain location】\n",
+    "- Bone/joint pain: ", patient_record, "\n",
+    "- Muscle pain: ", patient_record, "\n",
+    "- Headache: ", patient_record, "\n",
+    "- Neuralgia: ", patient_record, "\n",
+    "- Stomach/belly pain: ", patient_record, "\n",
+    "- Back pain: ", patient_record, "\n",
+    "- Cardiac pain: ", patient_record, "\n",
+    "- Chest pain: ", patient_record, "\n",
+    "- Menstrual pain: ", patient_record, "\n",
+    "- Toothache: ", patient_record, "\n",
+    "- Cheek pain: ", patient_record, "\n",
+    "- Leg pain: ", patient_record, "\n",
+    "- Arm pain: ", patient_record, "\n",
+    "- Skin pain: ", patient_record, "\n",
+    "【Family status】\n",
+    "Household size:",patient_record$`How many people live in your household in total? Please include yourself. If there are domestic workers in your household, please include them as well.`, "\n",
+    "Presence of household members with special care needs:", patient_record, "\n",
+    "Household income:", patient_record, " HKD\n",
+    "【Personal well being (0 indicates “very dissatisfied” and 10 indicates “very satisfied”.)】\n",
+    "Standard of living: ", patient_record, "\n",
+    "Personal Health: ", patient_record, "\n",
+    "Achieving in Life: ", patient_record, "\n",
+    "Personal Relationships: ", patient_record, "\n",
+    "Personal Safety: ", patient_record, "\n",
+    "Community-Connectedness: ", patient_record, "\n",
+    "Future Security: ", patient_record, "\n",
+    "【Mental Health】\n",
+    "Self-rated mental health: ", patient_record, "\n",
+    "Based on the information above, your answer is:"
+  )
+  
+  return(prompt)
+}
+
+
+convert_to_batch_jsonl <- function(patient_df, output_file = "patient_health_batch.jsonl") {
+
+  system_msg <- create_system_prompt()
+
+  json_objects <- list()
+
+  for (i in 1:nrow(patient_df)) {
+
+    patient_record <- patient_df[i, ]
+
+    custom_id <- paste0("patient_", patient_record$SurveyCaseid)
+
+    messages <- list(
+      list(
+        role = "system",
+        content = system_msg
+      ),
+      list(
+        role = "user",
+        content = create_user_prompt(patient_record)
+      )
+    )
+    
+
+    json_obj <- list(
+      custom_id = custom_id,
+      method = "POST",
+      url="/v4/chat/completions",
+      body = list(
+        model = "DSV3.1", 
+        messages = messages,
+        stream = T,
+        temperature = 0,
+        max_tokens = 2000
+      )
+    )
+    
+
+    json_objects[[i]] <- json_obj
+  }
+  
+  json_lines <- sapply(json_objects, function(obj) {
+    toJSON(obj, auto_unbox = TRUE, ensure_ascii = FALSE)
+  })
+
+  writeLines(json_lines, output_file)
+  
+  cat("Conversion Successful", length(json_objects), "patient record in JSONL format\n")
+  cat("Output File：", output_file, "\n")
+  
+  return(invisible(json_objects))
+}
+
+
+
 # Install and load necessary packages (if not already installed)
 # install.packages(c("ggplot2", "cluster", "factoextra", "rms", "segmented"))
 library(rms)
@@ -6,7 +158,7 @@ library(cluster)
 library(factoextra)
 library(ggplot2)
 
-# 1. Restricted Cubic Splines (RCS)
+# 2. Restricted Cubic Splines (RCS)
  
 # Fit the RCS model
 # 'ddist' is used to describe the distribution of variables for 'rcs' function
@@ -19,7 +171,7 @@ rcs_model <- ols(pain_intensity ~ rcs(deviation_variable, 3), data = data_rcs)
 # Summarize the model (includes likelihood ratio test for non-linearity)
 print(rcs_model)
 
-# 2. Caculate the slope of each side
+# 3. Caculate the slope of each side
  
 # This step is performed for deviation dimensions exhibiting clear inflection points in RCS curves.
 # First, identify the turning point from the RCS curve (e.g., visually or programmatically finding the minimum/maximum).
